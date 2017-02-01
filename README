@@ -1,0 +1,7 @@
+The purpose of this code is to perform conditional density
+estimation using a partition model framework.  More details
+regarding the theory will be provided at a later date.
+
+NOTE: Be sure the GPstuff toolbox is included in the Matlab path.
+GPstuff must be downloaded separately from:
+http://research.cs.aalto.fi/pml/software/gpstuff/
