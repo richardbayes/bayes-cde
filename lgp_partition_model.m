@@ -14,6 +14,8 @@
 %  burn: number of burn in iterations.  Default = 1,000.
 %  m: number of grid points for the density estimation.  Default = 400.
 %  Mmax: maximum number of partitions. Defaults to 10.
+%  n_min: minimum number of observations required in a partition.  Defaults
+%    to 50.
 %  precision: a tuning parameter for the proposal distribution for the
 %    weights, w.  Higher precision decreases the proposal variance and
 %    yields higher acceptance rates of moves in the weight vector w.
@@ -70,11 +72,12 @@ function results = lgp_partition_model(y,X,varargin)
   ip.addOptional('burn',1000);
   ip.addOptional('m',400);
   ip.addParameter('Mmax',0);
+  ip.addOptional('n_min',50);
   ip.addOptional('niter',10^4);
   ip.addOptional('precision',[]);
   ip.addOptional('printyes',1);
   ip.addOptional('w',[]);
-  ip.addOptional('xstar',[]);
+  % ip.addOptional('xstar',[]);
   ip.addRequired('X');
   ip.addRequired('y');
   
@@ -83,6 +86,7 @@ function results = lgp_partition_model(y,X,varargin)
   m = ip.Results.m;
   Mmax = ip.Results.Mmax;
   niter = ip.Results.niter;
+  n_min = ip.Results.n_min;
   burn = ip.Results.burn;
   precision = ip.Results.precision;
   printyes = ip.Results.printyes;
@@ -199,27 +203,31 @@ function results = lgp_partition_model(y,X,varargin)
       Mprop = M + 1;
       % proposed partition
       prtprop = multpartfunc_w(X,Sprop,w);
-      % Calculate log likelihood
-      [llikeprop, GPprop] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
-      % Corrections on boundary cases to the log MH ratio
-      if M > 1 && M < (Mmax - 1)
-          birthrev = 0;
-      elseif M == 1
-          birthrev = log(3/4);
-      elseif M == (Mmax - 1)
-          birthrev = log(4/3);
-      else
-          error('Unexpected case in Birth Step')
-      end
-      % log-MH ratio
-      lr = llikeprop - llike + birthrev;
-      if lr > log(rand(1))
-          llike = llikeprop;
-          S = Sprop;
-          M = Mprop;
-          prt = prtprop;
-          accepted = 1;
-          GP = GPprop;
+      % Make sure we have a minimum number of obs in each partition
+      tab = tabulate(prtprop);
+      if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
+          % Calculate log likelihood
+          [llikeprop, GPprop] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
+          % Corrections on boundary cases to the log MH ratio
+          if M > 1 && M < (Mmax - 1)
+              birthrev = 0;
+          elseif M == 1
+              birthrev = log(3/4);
+          elseif M == (Mmax - 1)
+              birthrev = log(4/3);
+          else
+              error('Unexpected case in Birth Step')
+          end
+          % log-MH ratio
+          lr = llikeprop - llike + birthrev;
+          if lr > log(rand(1))
+              llike = llikeprop;
+              S = Sprop;
+              M = Mprop;
+              prt = prtprop;
+              accepted = 1;
+              GP = GPprop;
+          end
       end
     
     elseif r == 2 % Death Step
@@ -268,20 +276,23 @@ function results = lgp_partition_model(y,X,varargin)
       
       % proposed partition
       prtprop = multpartfunc_w(X,Sprop,w);
-      
-      % Calculate log likelihood
-      [llikeprop, GPprop] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
-      % No boundary cases to correct for with a move step
-    
-      % log-MH ratio
-      lr = llikeprop - llike;
-      if lr > log(rand(1))
-          llike = llikeprop;
-          S = Sprop;
-          M = Mprop;
-          prt = prtprop;
-          accepted = 1;
-          GP = GPprop;
+      % Make sure we have a minimum number of obs in each partition
+      tab = tabulate(prtprop);
+      if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
+          % Calculate log likelihood
+          [llikeprop, GPprop] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
+          % No boundary cases to correct for with a move step
+
+          % log-MH ratio
+          lr = llikeprop - llike;
+          if lr > log(rand(1))
+              llike = llikeprop;
+              S = Sprop;
+              M = Mprop;
+              prt = prtprop;
+              accepted = 1;
+              GP = GPprop;
+          end
       end
     elseif r == 4 % Change weights step
         wtotal = wtotal + 1;
@@ -295,23 +306,27 @@ function results = lgp_partition_model(y,X,varargin)
         alphaprop = precision*wprop.^2;
         
         prtprop = multpartfunc_w(X,S,wprop);
-        % Calculate log likelihood
-        [llikeprop, GPprop] = llikefunc(gpgeneral,prtprop,y,M,Z);
-        % log-MH ratio
-        % Uniform prior means we don't have anything but the likelihood 
-        %   to determine acceptance since we have uniform priors on
-        %   everything
-        % Add in the dirichlet penalty since it is not "symmetric"
-        pen = drchpdf(w'.^2,alphaprop',1) - drchpdf(wprop'.^2,alpha',1);
-        lr = llikeprop - llike + pen;
-        
-        if lr > log(rand(1))
-            llike = llikeprop;
-            w = wprop;
-            prt = prtprop;
-            accepted = 1;
-            waccept = waccept + 1;
-            GP = GPprop;
+        % Make sure we have a minimum number of obs in each partition
+        tab = tabulate(prtprop);
+        if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
+            % Calculate log likelihood
+            [llikeprop, GPprop] = llikefunc(gpgeneral,prtprop,y,M,Z);
+            % log-MH ratio
+            % Uniform prior means we don't have anything but the likelihood 
+            %   to determine acceptance since we have uniform priors on
+            %   everything
+            % Add in the dirichlet penalty since it is not "symmetric"
+            pen = drchpdf(w'.^2,alphaprop',1) - drchpdf(wprop'.^2,alpha',1);
+            lr = llikeprop - llike + pen;
+
+            if lr > log(rand(1))
+                llike = llikeprop;
+                w = wprop;
+                prt = prtprop;
+                accepted = 1;
+                waccept = waccept + 1;
+                GP = GPprop;
+            end
         end
     end
   
