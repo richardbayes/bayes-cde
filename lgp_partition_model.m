@@ -63,19 +63,24 @@
 %       GPstuff must be downloaded separately from:
 %       http://research.cs.aalto.fi/pml/software/gpstuff/
 
-function results = lgp_partition_model(y,X,varargin)
+function lgp_partition_model(y,X,varargin)
   
   
   % Input Parser
   ip = inputParser;
   ip.FunctionName = 'lgp_partition_model';
   ip.addOptional('burn',1000);
+  addParameter(ip,'filepath','./output/')
+  addParameter(ip,'hottemp',.1)
   ip.addOptional('m',400);
   ip.addParameter('Mmax',0);
   ip.addOptional('n_min',50);
   ip.addOptional('niter',10^4);
   ip.addOptional('precision',[]);
   ip.addOptional('printyes',1);
+  ip.addOptional('saveall',0);
+  addParameter(ip,'seed','shuffle');
+  ip.addOptional('swapfreq',1);
   ip.addOptional('w',[]);
   % ip.addOptional('xstar',[]);
   ip.addRequired('X');
@@ -83,6 +88,8 @@ function results = lgp_partition_model(y,X,varargin)
   
   ip.parse(y,X,varargin{:});
   
+  filepath = ip.Results.filepath;
+  hottemp = ip.Results.hottemp;
   m = ip.Results.m;
   Mmax = ip.Results.Mmax;
   niter = ip.Results.niter;
@@ -90,6 +97,9 @@ function results = lgp_partition_model(y,X,varargin)
   burn = ip.Results.burn;
   precision = ip.Results.precision;
   printyes = ip.Results.printyes;
+  saveall = ip.Results.saveall;
+  seed = ip.Results.seed;
+  swapfreq = ip.Results.swapfreq;
   w = ip.Results.w;
 
   % Standardize the covariate space;
@@ -169,8 +179,9 @@ function results = lgp_partition_model(y,X,varargin)
   M = size(S,1); % number of partitions
   prt = multpartfunc_w(X,S,w); % Current Tesselation Index
   % Log-likelihood
-  [llike, GP] = llikefunc(gpgeneral,prt,y,M,Z);
+  [llike, ~] = llikefunc(gpgeneral,prt,y,M,Z);
   
+   
   % Initialize vectors which hold posterior samples
   W = zeros(niter,p); % Weights
   Mpost = zeros(niter,1); % Number of partitions
@@ -178,262 +189,233 @@ function results = lgp_partition_model(y,X,varargin)
   LLIKE = zeros(niter,1); % Keep track of marginal log-likelihood on each iteration.
   
   naccepted = 0; % counting acceptance rate of the MCMC chain
-  display('Starting MCMC...');
+  totals = [0 0 0 0];
+  accepts = [0 0 0 0];
+  swapaccepttotal = 0;
+  swaptotal = 0;
+  swapaccepttotal_global = 0;
+  swaptotal_global = 0;
+  
+  % Parallel Tempering Prep
+  poolobj = gcp('nocreate'); % If no pool, do not create new one.
+  if isempty(poolobj)
+     poolsize = 0;
+  else
+      poolsize = poolobj.NumWorkers;
+  end
+  m = poolsize;
+  % Harmonic Temperatures
+  %delta = (1/hottemp - 1)/(m-1);
+  %temps = [1, 1./(1 + delta*(1:m - 1))];
+  % Sigmoidal temperatures
+  j1 = log( 1/(-1 + 1.01) - 1);
+  jm = log( 1/(-hottemp + 1.01) - 1);
+  dm = (jm-j1)/(m-1);
+  js = j1:dm:jm;
+  temps = 1.01 - 1./(1 + exp(js));
+
+  spmdsize = min([poolsize,m]);
+  if spmdsize < 1
+      error('Must have at least two processes to do parallel tempering.');
+  end
+  spmd(spmdsize)
+      myname = labindex;
+      master = 1; % master process labindex
+      mytemp = temps(myname);
+      % Create independent Random Streams with a seed on each lab
+      s = RandStream.create('mrg32k3a','Numstreams',m,...
+          'StreamIndices',myname,'Seed',seed);
+      RandStream.setGlobalStream(s);
+      
+      % Set up a Tessellation Structure
+      T = struct('S',S,'M',M,'w',w,'temp',temps(myname),'llike',llike);
+      
+      if myname == master
+            disp('Starting MCMC...')
+      end
+  
   for ii=1:(niter+burn)
-    accepted = 0;
-    % Determine which step to do 
-    if M > 1 && M < Mmax
-        r = randsample(4,1);
-        birthrev = 0;
-        deathrev = 0;
-    elseif M == 1
-        r = randsample([1 3 4],1);
-    elseif M == Mmax
-        r = randsample([2 3 4],1);
-    else
-        error('A case that was not expected occurred in MCMC')
-    end
     
-   if r == 1 % Birth
-      % Choose an index not already in S
-      ind = ismember(1:n,S);
-      IND = 1:n;
-      IND = IND(ind == 0);
-      Sprop = [S; randsample(IND,1)]; % Proposed Tesselation Center
-      Mprop = M + 1;
-      % proposed partition
-      prtprop = multpartfunc_w(X,Sprop,w);
-      % Make sure we have a minimum number of obs in each partition
-      tab = tabulate(prtprop);
-      if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
-          % Calculate log likelihood
-          [llikeprop, GPprop] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
-          % Corrections on boundary cases to the log MH ratio
-          if M > 1 && M < (Mmax - 1)
-              birthrev = 0;
-          elseif M == 1
-              birthrev = log(3/4);
-          elseif M == (Mmax - 1)
-              birthrev = log(4/3);
-          else
-              error('Unexpected case in Birth Step')
-          end
-          % log-MH ratio
-          lr = llikeprop - llike + birthrev;
-          if lr > log(rand(1))
-              llike = llikeprop;
-              S = Sprop;
-              M = Mprop;
-              prt = prtprop;
-              accepted = 1;
-              GP = GPprop;
-          end
-      end
+    % Perform MH step for each parallel region
+    [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,precision,Z);
+    totals(r) = totals(r) + 1;
+    accepts(r) = accepts(r) + accepted;
+%     
+%     if accepted
+%         switch r
+%             case 1
+%                 nbirth = nbirth + 1;
+%             case 2
+%                 ndeath = ndeath + 1;
+%             case 3
+%                 nmove = nmove + 1;
+%             case 4 
+%                 nweight = nweight + 1;
+%         end
+%     end
+    naccepted = naccepted + accepted;
     
-    elseif r == 2 % Death Step
-        % Randomly delete index from existing centers
-        Sprop = S;
-        Sprop(randsample(size(S,1),1)) = [];
-        Mprop = M - 1;
-        % proposed partition
-        prtprop = multpartfunc_w(X,Sprop,w);
-
-        % Calculate log likelihood
-        [llikeprop, GPprop] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
-        % Corrections on boundary cases to the log MH ratio
-        if M > 2 && M < Mmax
-            deathrev = 0;
-        elseif M == 2
-            deathrev = log(4/3);
-        elseif M == Mmax
-            deathrev = log(3/4);
+    
+    if mod(ii,swapfreq) == 0
+        % Propose a switch of chains and send to all workers
+        if myname == master
+            swapind = zeros(1,2);
+            swapind(1) = randsample(m-1,1);
+            swapind(2) = swapind(1) + 1;
+            swapind = labBroadcast(master,swapind);
         else
-            error('Unexpected case in Death Step')
+            swapind = labBroadcast(master); 
         end
-        % log-MH ratio
-        lr = llikeprop - llike + deathrev;
-        if lr > log(rand(1))
-            llike = llikeprop;
-            S = Sprop;
-            M = Mprop;
-            prt = prtprop;
-            accepted = 1;
-            GP = GPprop;
+        % Send proposed swap to master
+        if myname == swapind(1) && myname ~= master
+            labSend(T,master,1);
+            swaptotal = swaptotal + 1;
         end
-    
-    elseif r == 3 % Move Step
-      mind = randsample(M,1);
-      Sprop = S;
-      Sprop(mind) = []; % Delete one index
-      % Add in one index from ones not previously in S
-      ind = ismember(1:n,S);
-      IND = 1:n;
-      IND = IND(ind == 0);
-      Sprop = [Sprop; randsample(IND,1)];
-      
-      % Proposed M
-      Mprop = M;
-      
-      % proposed partition
-      prtprop = multpartfunc_w(X,Sprop,w);
-      % Make sure we have a minimum number of obs in each partition
-      tab = tabulate(prtprop);
-      if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
-          % Calculate log likelihood
-          [llikeprop, GPprop] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
-          % No boundary cases to correct for with a move step
-
-          % log-MH ratio
-          lr = llikeprop - llike;
-          if lr > log(rand(1))
-              llike = llikeprop;
-              S = Sprop;
-              M = Mprop;
-              prt = prtprop;
-              accepted = 1;
-              GP = GPprop;
-          end
-      end
-    elseif r == 4 % Change weights step
-        wtotal = wtotal + 1;
-               
-        % Propose a new weight using a Dirichlet distribution as the
-        %   proposal distribution
-        % Precision parameter (higher precision increases acceptance rates)
-        alpha = precision*w.^2;
-        
-        wprop = sqrt(drchrnd(alpha',1)');
-        alphaprop = precision*wprop.^2;
-        
-        prtprop = multpartfunc_w(X,S,wprop);
-        % Make sure we have a minimum number of obs in each partition
-        tab = tabulate(prtprop);
-        if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
-            % Calculate log likelihood
-            [llikeprop, GPprop] = llikefunc(gpgeneral,prtprop,y,M,Z);
-            % log-MH ratio
-            % Uniform prior means we don't have anything but the likelihood 
-            %   to determine acceptance since we have uniform priors on
-            %   everything
-            % Add in the dirichlet penalty since it is not "symmetric"
-            pen = drchpdf(w'.^2,alphaprop',1) - drchpdf(wprop'.^2,alpha',1);
-            lr = llikeprop - llike + pen;
-
-            if lr > log(rand(1))
-                llike = llikeprop;
-                w = wprop;
-                prt = prtprop;
-                accepted = 1;
-                waccept = waccept + 1;
-                GP = GPprop;
+        if myname == master
+            if myname ~= swapind(1)
+                Tstarswap1 = labReceive(swapind(1),1);
+            else
+                Tstarswap1 = T;
+                swaptotal = swaptotal + 1;
+            end
+        end
+        if myname == swapind(2) && myname ~= master
+            labSend(T,master,2);
+            swaptotal = swaptotal + 1;
+        end
+        if myname == master
+            if myname ~= swapind(2)
+                Tstarswap2 = labReceive(swapind(2),2);
+            else
+                Tstarswap2 = T;
+                swaptotal = swaptotal + 1;
+            end
+        end
+        if myname == master
+            swaptotal_global = swaptotal_global + 1;
+            lrswap = (Tstarswap2.temp * Tstarswap1.llike + Tstarswap1.lprior) + ...
+                (Tstarswap1.temp * Tstarswap2.llike + Tstarswap2.lprior) - ...
+                (Tstarswap1.temp * Tstarswap1.llike + Tstarswap1.lprior) - ...
+                (Tstarswap2.temp * Tstarswap2.llike + Tstarswap2.lprior);
+            if ~isfinite(lrswap)
+                error('Non-finite swap likelihood ratio.')
+            end
+            if lrswap > log(rand) % Accept
+                swapaccept = 1;
+            else
+                swapaccept = 0;
+            end
+            swapaccepttotal_global = swapaccepttotal_global + swapaccept;
+            swapaccept = labBroadcast(master,swapaccept);
+        else
+            swapaccept = labBroadcast(master);
+        end
+        if swapaccept
+            if myname == master
+                if myname ~= swapind(1)
+                    labSend(Tstarswap2,swapind(1))
+                else
+                    T = Tstarswap2;
+                    swapaccepttotal = swapaccepttotal + 1;
+                end
+                if myname ~= swapind(2)
+                    labSend(Tstarswap1,swapind(2))
+                else
+                    T = Tstarswap1;
+                    swapaccepttotal = swapaccepttotal + 1;
+                end
+            elseif any(myname == swapind)
+                swapaccepttotal = swapaccepttotal + 1;
+                T = labReceive(master);
+            end
+            if any(myname == swapind) % Update temperature on Tree
+                T.temp = mytemp;
             end
         end
     end
-  
-    naccepted = naccepted + accepted;
-  
+
     if printyes
-      if ii <= burn && mod(ii,10) == 0
-        disp(['Burn-in ',num2str(ii),'/',num2str(burn),...
-            ', log-lik = ',num2str(llike),...
-            ', acceptances = ',num2str(naccepted/ii),...
-            ' & ',num2str(waccept/wtotal),...
-            ', Partitions = ',num2str(M)]) % print every 10 iterations
-      elseif ii > burn && mod(ii,10) == 0
-          disp(['Iteration ',num2str(ii-burn),'/',num2str(niter),...
-              ', log-lik = ',num2str(llike),...
-              ', acceptance = ',num2str(naccepted/ii),...
-              ' & ',num2str(waccept/wtotal),...
-              ', Partitions = ',num2str(M)]) % print every 10 iterations
-      end
+        if mod(ii,1) == 0
+            disp(['i = ',num2str(ii),', ID = ',num2str(myname),', llike = ',num2str(T.llike),...
+                ', accept = ',num2str(naccepted/ii),...
+                ', swapaccept = ',num2str(swapaccepttotal),'/',num2str(swaptotal),...
+                ', Size = ',num2str(length(T.S)),...
+                ', temp = ',num2str(T.temp)]);
+            if myname == master
+                disp(' ');
+            end
+        end
     end
     
+  
+%     if printyes
+%       if ii <= burn && mod(ii,10) == 0
+%         disp(['Burn-in ',num2str(ii),'/',num2str(burn),...
+%             ', log-lik = ',num2str(llike),...
+%             ', acceptances = ',num2str(naccepted/ii),...
+%             ' & ',num2str(waccept/wtotal),...
+%             ', Partitions = ',num2str(M)]) % print every 10 iterations
+%       elseif ii > burn && mod(ii,10) == 0
+%           disp(['Iteration ',num2str(ii-burn),'/',num2str(niter),...
+%               ', log-lik = ',num2str(llike),...
+%               ', acceptance = ',num2str(naccepted/ii),...
+%               ' & ',num2str(waccept/wtotal),...
+%               ', Partitions = ',num2str(M)]) % print every 10 iterations
+%       end
+%     end
+  
+  
     if ii > burn
       % Now Store Values
-      Mpost(ii-burn) = M;
-      Spost{ii-burn} = S;
-      W(ii-burn,:) = w;
-      LLIKE(ii-burn) = llike;
+      Mpost(ii-burn) = T.M;
+      Spost{ii-burn} = T.S;
+      W(ii-burn,:) = T.w;
+      LLIKE(ii-burn) = T.llike;
+    end
+  end
+  all_acc_percs = accepts./totals;
+  acceptancepercent = naccepted/(niter+burn);
+  % Save Output
+  % Save output
+  output = struct('Mpost',Mpost,...
+      'Spost',{Spost},'acceptancepercent',acceptancepercent,...
+      'all_acc_percs',all_acc_percs,...
+      'W',W,...
+      'llike',LLIKE);
+  
+  disp('output');
+    if saveall
+        savenames = 1:m;
+    else
+        savenames = master;
+    end
+    if any(myname == savenames)
+        fname = strcat(filepath,'mcmc_id',num2str(myname),'.mat');
+        swap_percent_global = swapaccepttotal_global/swaptotal_global;
+        strt = tic;
+        savedata(fname,output,swap_percent_global);
+        stp = toc(strt);
+        savetime = stp - strt;
     end
   end
     
   % Acceptance rates
-  acceptancepercent = naccepted/(niter+burn);
-  wacceptancepercent = waccept/wtotal;
+  
+  %wacceptancepercent = waccept/wtotal;
 
+  
+  
   % Function Return
-  results = struct('Mpost',Mpost,...
-      'Spost',{Spost},'acceptancepercent',acceptancepercent,...
-      'wacceptancepercent',wacceptancepercent,'W',W,...
-      'llike',LLIKE);
+%   results = struct('Mpost',Mpost,...
+%       'Spost',{Spost},'acceptancepercent',acceptancepercent,...
+%       'all_acc_percs',all_acc_percs,...
+%       'W',W,...
+%       'llike',LLIKE);
     
-  % End of Function
-  
-  
-  
-  function [ll, GP] = llikefunc(gp,prt,y,M,Z)
-  % This function calculates the marginal likelihood, but also returns
-  %   the gaussian processes with their optimized hyperparameters in GP.
-  %   GP can then be passed to another function (mdleavgdraw) to 
-  %   obtain the mean and covariance matrix of the latent function f.
-  ll = 0;
-  % Calculate and add up the likelihood contribution in each partition
-  GP = cell(M,1);
-  m = max(size(Z,2));
-  gporig = gp;
-  % Set optim options
-  opt = optimset('TolFun',1e-3,'TolX',1e-3,'Display','off');
-  for ii=1:M
-    % Split y in to the iith partition
-    ypart = y(prt == ii);
-    
-    % Choose a subset of bins (to avoid estimating densities in regions
-    %   that don't have any data).
-    xmin = min([min(ypart) mean(ypart) - 3*std(ypart)]);
-    xmax = max([max(ypart) mean(ypart) + 3*std(ypart)]);
-    xlb = find(Z > xmin, 1 ) - 1;
-    if xlb < 1
-        xlb = 1;
-    end
-    xup = find(Z < xmax, 1, 'last' ) + 1;
-    if xup > m
-        xup = m;
-    end
-    Xpart = Z(xlb:xup);
-    
-    % Calculate the number in each bin
-    nypart = hist(ypart,Xpart);
-    nypart = nypart';
-    % Optimize Hyperparameters
-    
-    % Optimization of hyperparameters...
-    % Scale X so we can always use the same prior
-    % (same strategy is employed in lgpdens just before using gpsmooth
-    % function
-    Zscaled = ((Xpart - mean(Xpart))./std(Xpart))';
-    % Best guess of lengthscale (From gpsmooth function in lgpdens from
-    %    riihimaki's excellent MATLAB code)
-    h=max(diff(Zscaled(1:2,end)).^2,1/sum(nypart).^(1/5)/2);
-    gp = gporig;
-    gpcf1 = gp.cf{1};
-    gpcf1 = gpcf_sexp(gpcf1, 'lengthScale', h*repmat(2,[1 size(Zscaled,2)]));
-    gp = gp_set(gp,'cf',gpcf1);
-  
-    gp=gp_optim(gp,Zscaled,nypart,'opt',opt, 'optimf', @fminlbfgs);
+end % End of Function
 
-    % Change GP structure to drop the priors for the 'l' and 'sigma2'
-    %   The LGP paper just optimizes the hyperparameters and then
-    %   just uses those values.  The priors for the hyperparameters are
-    %   simply to aid in finding the smoothness parameters.  The marginal 
-    %   distribution in the paper is given the MAP hyperparameter values.
-    gp.cf{1} = gpcf_sexp(gp.cf{1},'magnSigma2_prior',[],'lengthScale_prior',[]);
-    GP{ii} = gp;
-    
-    % Calculate Marginal likelihood and add it to the rest.
-    ll = ll - gpla_e([],gp,'x',Zscaled,'y',nypart);
-  end
-  
-  
-  
+function savedata(fname,output,swp_perc)
+    save(fname,'output','swp_perc')
+end
   
   
