@@ -99,6 +99,14 @@ function output = lgp_partition_model(y,X,varargin)
     seed = ip.Results.seed;
     swapfreq = ip.Results.swapfreq;
     w = ip.Results.w;
+    
+    rng(seed); % Set RNG for the client...
+    
+    % Make output drive
+    makefolder_status = mkdir(filepath);
+    if ~makefolder_status
+        error('Could not make output directory');
+    end
 
     % Standardize the covariate space;
     [X,~,~] = zscore(X);
@@ -213,7 +221,8 @@ function output = lgp_partition_model(y,X,varargin)
     spmdsize = min([poolsize,mm]);
         
     if spmdsize < 2
-        disp('NOTE: Must have at least two processes to do parallel tempering. Initiate outside the funcion with parpool function.');
+        disp('NOTE: Must have at least two processes to do parallel tempering.');
+        disp('      Initiate outside the funcion with parpool function.');
         % error('Must have at least two processes to do parallel tempering.');
         spmdsize = 1;
     end
@@ -408,7 +417,7 @@ function output = lgp_partition_model(y,X,varargin)
         % Function Return value
         swap_percent = accepts./totals; % It is used in the next line
         output = struct('Mpost',Mpost,...
-          'Spost',{Spost},'acceptancepercent',naccepted/(iter + burn),...
+          'Spost',{Spost},'acceptancepercent',naccepted/(niter + burn),...
           'all_acc_percs',swap_percent,...
           'W',W,...
           'llike',LLIKE);

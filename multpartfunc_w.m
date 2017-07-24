@@ -47,6 +47,9 @@ function prt = multpartfunc_w(X,S,w)
     end
     
     if(max(prt) ~= M)
+        S
+        X(S,:)
+        [max(prt), M]
         error('Partitions & M Do not agree! Most likely duplicate values in design matrix.')
     end
 end
