@@ -21,33 +21,35 @@ function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,precision,Z)
         Sprop = [T.S; randsample(IND,1)]; % Proposed Tesselation Center
         Mprop = T.M + 1;
         % proposed partition
-        prtprop = multpartfunc_w(X,Sprop,T.w);
-        % Make sure we have a minimum number of obs in each partition
-        tab = tabulate(prtprop);
-        if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
-            % Calculate log likelihood
-            [llikeprop, ~] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
-            lpriorprop = get_lprior(n,p,Mprop,Mmax);
-            % Corrections on boundary cases to the log MH ratio
-            if T.M > 1 && T.M < (Mmax - 1)
-                birthrev = 0;
-            elseif T.M == 1
-                birthrev = log(3/4);
-            elseif T.M == (Mmax - 1)
-                birthrev = log(4/3);
-            else
-                error('Unexpected case in Birth Step')
-            end
-            % log-MH ratio
-            lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior + birthrev;
-            if lr > log(rand(1))
-                T.llike = llikeprop;
-                T.S = Sprop;
-                T.M = Mprop;
-                T.lprior = lpriorprop;
-                % prt = prtprop;
-                accepted = 1;
-                % GP = GPprop;
+        [prtprop,pflag] = multpartfunc_w(X,Sprop,T.w);
+        if ~pflag
+            % Make sure we have a minimum number of obs in each partition
+            tab = tabulate(prtprop);
+            if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
+                % Calculate log likelihood
+                [llikeprop, ~] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
+                lpriorprop = get_lprior(n,p,Mprop,Mmax);
+                % Corrections on boundary cases to the log MH ratio
+                if T.M > 1 && T.M < (Mmax - 1)
+                    birthrev = 0;
+                elseif T.M == 1
+                    birthrev = log(3/4);
+                elseif T.M == (Mmax - 1)
+                    birthrev = log(4/3);
+                else
+                    error('Unexpected case in Birth Step')
+                end
+                % log-MH ratio
+                lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior + birthrev;
+                if lr > log(rand(1))
+                    T.llike = llikeprop;
+                    T.S = Sprop;
+                    T.M = Mprop;
+                    T.lprior = lpriorprop;
+                    % prt = prtprop;
+                    accepted = 1;
+                    % GP = GPprop;
+                end
             end
         end
     elseif r == 2 % Death Step
@@ -56,31 +58,32 @@ function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,precision,Z)
         Sprop(randsample(size(T.S,1),1)) = [];
         Mprop = T.M - 1;
         % proposed partition
-        prtprop = multpartfunc_w(X,Sprop,T.w);
-
-        % Calculate log likelihood
-        [llikeprop, ~] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
-        lpriorprop = get_lprior(n,p,Mprop,Mmax);
-        % Corrections on boundary cases to the log MH ratio
-        if T.M > 2 && T.M < Mmax
-            deathrev = 0;
-        elseif T.M == 2
-            deathrev = log(4/3);
-        elseif T.M == Mmax
-            deathrev = log(3/4);
-        else
-            error('Unexpected case in Death Step')
-        end
-        % log-MH ratio
-        lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior + deathrev;
-        if lr > log(rand(1))
-            T.llike = llikeprop;
-            T.lprior = lpriorprop;
-            T.S = Sprop;
-            T.M = Mprop;
-            % prt = prtprop;
-            accepted = 1;
-            % GP = GPprop;
+        [prtprop,pflag] = multpartfunc_w(X,Sprop,T.w);
+        if ~pflag
+            % Calculate log likelihood
+            [llikeprop, ~] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
+            lpriorprop = get_lprior(n,p,Mprop,Mmax);
+            % Corrections on boundary cases to the log MH ratio
+            if T.M > 2 && T.M < Mmax
+                deathrev = 0;
+            elseif T.M == 2
+                deathrev = log(4/3);
+            elseif T.M == Mmax
+                deathrev = log(3/4);
+            else
+                error('Unexpected case in Death Step')
+            end
+            % log-MH ratio
+            lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior + deathrev;
+            if lr > log(rand(1))
+                T.llike = llikeprop;
+                T.lprior = lpriorprop;
+                T.S = Sprop;
+                T.M = Mprop;
+                % prt = prtprop;
+                accepted = 1;
+                % GP = GPprop;
+            end
         end
     elseif r == 3 % Move Step
         mind = randsample(T.M,1);
@@ -96,25 +99,27 @@ function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,precision,Z)
         Mprop = T.M;
 
         % proposed partition
-        prtprop = multpartfunc_w(X,Sprop,T.w);
-        % Make sure we have a minimum number of obs in each partition
-        tab = tabulate(prtprop);
-        if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
-            % Calculate log likelihood
-            [llikeprop, ~] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
-            lpriorprop = get_lprior(n,p,Mprop,Mmax);
-            % No boundary cases to correct for with a move step
+        [prtprop,pflag] = multpartfunc_w(X,Sprop,T.w);
+        if ~pflag
+            % Make sure we have a minimum number of obs in each partition
+            tab = tabulate(prtprop);
+            if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
+                % Calculate log likelihood
+                [llikeprop, ~] = llikefunc(gpgeneral,prtprop,y,Mprop,Z);
+                lpriorprop = get_lprior(n,p,Mprop,Mmax);
+                % No boundary cases to correct for with a move step
 
-            % log-MH ratio
-            lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior;
-            if lr > log(rand(1))
-                T.llike = llikeprop;
-                T.S = Sprop;
-                T.M = Mprop;
-                T.lprior = lpriorprop;
-                % prt = prtprop;
-                accepted = 1;
-                % GP = GPprop;
+                % log-MH ratio
+                lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior;
+                if lr > log(rand(1))
+                    T.llike = llikeprop;
+                    T.S = Sprop;
+                    T.M = Mprop;
+                    T.lprior = lpriorprop;
+                    % prt = prtprop;
+                    accepted = 1;
+                    % GP = GPprop;
+                end
             end
         end
     elseif r == 4 % Change weights step
@@ -128,29 +133,31 @@ function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,precision,Z)
         wprop = sqrt(drchrnd(alpha',1)');
         alphaprop = precision*wprop.^2;
 
-        prtprop = multpartfunc_w(X,T.S,wprop);
-        % Make sure we have a minimum number of obs in each partition
-        tab = tabulate(prtprop);
-        if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
-            % Calculate log likelihood
-            [llikeprop, ~] = llikefunc(gpgeneral,prtprop,y,T.M,Z);
-            lpriorprop = get_lprior(n,p,T.M,Mmax);
-            % log-MH ratio
-            % Uniform prior means we don't have anything but the likelihood 
-            %   to determine acceptance since we have uniform priors on
-            %   everything
-            % Add in the dirichlet penalty since it is not "symmetric"
-            pen = drchpdf(T.w'.^2,alphaprop',1) - drchpdf(wprop'.^2,alpha',1);
-            lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior + pen;
-            % waccept = 0;
-            if lr > log(rand(1))
-                T.llike = llikeprop;
-                T.w = wprop;
-                T.lprior = lpriorprop;
-                %prt = prtprop;
-                accepted = 1;
-                % waccept = 1;
-                %GP = GPprop;
+        [prtprop,pflag] = multpartfunc_w(X,T.S,wprop);
+        if ~pflag
+            % Make sure we have a minimum number of obs in each partition
+            tab = tabulate(prtprop);
+            if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
+                % Calculate log likelihood
+                [llikeprop, ~] = llikefunc(gpgeneral,prtprop,y,T.M,Z);
+                lpriorprop = get_lprior(n,p,T.M,Mmax);
+                % log-MH ratio
+                % Uniform prior means we don't have anything but the likelihood 
+                %   to determine acceptance since we have uniform priors on
+                %   everything
+                % Add in the dirichlet penalty since it is not "symmetric"
+                pen = drchpdf(T.w'.^2,alphaprop',1) - drchpdf(wprop'.^2,alpha',1);
+                lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior + pen;
+                % waccept = 0;
+                if lr > log(rand(1))
+                    T.llike = llikeprop;
+                    T.w = wprop;
+                    T.lprior = lpriorprop;
+                    %prt = prtprop;
+                    accepted = 1;
+                    % waccept = 1;
+                    %GP = GPprop;
+                end
             end
         end
     end

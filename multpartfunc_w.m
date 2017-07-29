@@ -32,7 +32,8 @@
 %       GPstuff must be downloaded separately from:
 %       http://research.cs.aalto.fi/pml/software/gpstuff/
 
-function prt = multpartfunc_w(X,S,w)
+function [prt,flag] = multpartfunc_w(X,S,w)
+    flag = 0;
     n = size(X,1);
     M = size(S,1);
     prt = zeros(n,1);
@@ -47,9 +48,11 @@ function prt = multpartfunc_w(X,S,w)
     end
     
     if(max(prt) ~= M)
-        S
-        X(S,:)
-        [max(prt), M]
-        error('Partitions & M Do not agree! Most likely duplicate values in design matrix.')
+        flag = 1;
+%         S
+%         X(S,:)
+%         [max(prt), M]
+%         w
+        %error('Partitions & M Do not agree! Most likely duplicate values in design matrix.')
     end
 end

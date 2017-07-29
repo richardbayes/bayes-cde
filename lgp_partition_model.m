@@ -77,6 +77,7 @@ function output = lgp_partition_model(y,X,varargin)
     ip.addOptional('precision',[]);
     ip.addOptional('printyes',1);
     ip.addOptional('saveall',0);
+    ip.addOptional('S',[]);
     addParameter(ip,'seed','shuffle');
     ip.addOptional('swapfreq',1);
     ip.addOptional('w',[]);
@@ -95,6 +96,7 @@ function output = lgp_partition_model(y,X,varargin)
     burn = ip.Results.burn;
     precision = ip.Results.precision;
     printyes = ip.Results.printyes;
+    S = ip.Results.S;
     saveall = ip.Results.saveall;
     seed = ip.Results.seed;
     swapfreq = ip.Results.swapfreq;
@@ -129,6 +131,10 @@ function output = lgp_partition_model(y,X,varargin)
     if size(w,1) < p
         w = ones(p,1)/sqrt(p);
         disp('NOTE: Starting MCMC with equal covariate (tesselation) weights');
+    else
+        if size(w,1) < size(w,2)
+            w = w';
+        end
     end
 
     if isempty(precision)
@@ -179,9 +185,19 @@ function output = lgp_partition_model(y,X,varargin)
     % Acceptance Percent for w
 
     % Initial values  
-    S = randsample(n,1); % Index of tesselation centers (random start point)
-    M = size(S,1); % number of partitions
-    prt = multpartfunc_w(X,S,w); % Current Tesselation Index
+    if isempty(S)
+        S = randsample(n,1); % Index of tesselation centers (random start point)
+        M = size(S,1); % number of partitions
+    else
+        if size(S,1) < size(S,2)
+            S = S';
+        end
+        M = size(S,1);
+    end
+    [prt,pflag] = multpartfunc_w(X,S,w); % Current Tesselation Index
+    if pflag
+        error('Tessellation has equivalent centers due to the S and w combination. Change start values.')
+    end
     % Log-likelihood
     [llike, ~] = llikefunc(gpgeneral,prt,y,M,Z);
     lprior = get_lprior(n,size(X,2),M,Mmax);
