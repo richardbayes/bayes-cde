@@ -74,11 +74,12 @@ function output = lgp_partition_model(y,X,varargin)
     ip.addParameter('Mmax',0);
     ip.addOptional('n_min',50);
     ip.addOptional('niter',10^4);
-    ip.addOptional('precision',[]);
+    %ip.addOptional('precision',[]);
     ip.addOptional('printyes',1);
     ip.addOptional('saveall',0);
     ip.addOptional('S',[]);
     addParameter(ip,'seed','shuffle');
+    ip.addOptional('sprop_w',.1);
     ip.addOptional('swapfreq',1);
     ip.addOptional('w',[]);
     % ip.addOptional('xstar',[]);
@@ -94,11 +95,12 @@ function output = lgp_partition_model(y,X,varargin)
     niter = ip.Results.niter;
     n_min = ip.Results.n_min;
     burn = ip.Results.burn;
-    precision = ip.Results.precision;
+    % precision = ip.Results.precision;
     printyes = ip.Results.printyes;
     S = ip.Results.S;
     saveall = ip.Results.saveall;
     seed = ip.Results.seed;
+    sprop_w = ip.Results.sprop_w;
     swapfreq = ip.Results.swapfreq;
     w = ip.Results.w;
     
@@ -137,11 +139,7 @@ function output = lgp_partition_model(y,X,varargin)
         end
     end
 
-    if isempty(precision)
-        precision = 1;
-        disp('NOTE: No precision specified.  Defaulting to 1.');
-    end
-
+    
     n = size(y,1);
     % Assign Mmax if not assigned
     if Mmax == 0
@@ -238,7 +236,7 @@ function output = lgp_partition_model(y,X,varargin)
         
     if spmdsize < 2
         disp('NOTE: Must have at least two processes to do parallel tempering.');
-        disp('      Initiate outside the funcion with parpool function.');
+        disp('      Initiate outside the function with parpool function.');
         % error('Must have at least two processes to do parallel tempering.');
         spmdsize = 1;
     end
@@ -262,7 +260,7 @@ function output = lgp_partition_model(y,X,varargin)
             end
             for ii=1:(niter+burn)
                 % Perform MH step for each parallel region
-                [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,precision,Z);
+                [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,sprop_w,Z);
                 totals(r) = totals(r) + 1;
                 accepts(r) = accepts(r) + accepted;
                 naccepted = naccepted + accepted;
@@ -396,7 +394,7 @@ function output = lgp_partition_model(y,X,varargin)
         RandStream.setGlobalStream(s);
         
         for ii=1:(niter + burn)
-            [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,precision,Z);
+            [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,sprop_w,Z);
             totals(r) = totals(r) + 1;
             accepts(r) = accepts(r) + accepted;
             naccepted = naccepted + accepted;

@@ -1,4 +1,4 @@
-function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,precision,Z)
+function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,sprop_w,Z)
     p = size(X,2);
     accepted = 0;
     % Determine which step to do 
@@ -123,40 +123,38 @@ function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,precision,Z)
             end
         end
     elseif r == 4 % Change weights step
-        % wtotal = wtotal + 1;
-
-        % Propose a new weight using a Dirichlet distribution as the
-        %   proposal distribution
-        % Precision parameter (higher precision increases acceptance rates)
-        alpha = precision*T.w.^2;
-
-        wprop = sqrt(drchrnd(alpha',1)');
-        alphaprop = precision*wprop.^2;
-
-        [prtprop,pflag] = multpartfunc_w(X,T.S,wprop);
-        if ~pflag
-            % Make sure we have a minimum number of obs in each partition
-            tab = tabulate(prtprop);
-            if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
-                % Calculate log likelihood
-                [llikeprop, ~] = llikefunc(gpgeneral,prtprop,y,T.M,Z);
-                lpriorprop = get_lprior(n,p,T.M,Mmax);
-                % log-MH ratio
-                % Uniform prior means we don't have anything but the likelihood 
-                %   to determine acceptance since we have uniform priors on
-                %   everything
-                % Add in the dirichlet penalty since it is not "symmetric"
-                pen = drchpdf(T.w'.^2,alphaprop',1) - drchpdf(wprop'.^2,alpha',1);
-                lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior + pen;
-                % waccept = 0;
-                if lr > log(rand(1))
-                    T.llike = llikeprop;
-                    T.w = wprop;
-                    T.lprior = lpriorprop;
-                    %prt = prtprop;
-                    accepted = 1;
-                    % waccept = 1;
-                    %GP = GPprop;
+        % Randomly select a weight to change
+        ind = randsample(p,1);
+        wprop = T.w;
+        u = normrnd(0,sprop_w);
+        v = ((T.w(ind) + u)/(1 + u) - T.w(ind)) / (T.w(ind) - 1); % value needed to come back (reversibility)
+        wprop(ind) = wprop(ind) + u;
+        wprop = wprop ./ sum(wprop); % Normalize
+        if all(wprop > 0)
+            [prtprop,pflag] = multpartfunc_w(X,T.S,wprop);
+            if ~pflag
+                % Make sure we have a minimum number of obs in each partition
+                tab = tabulate(prtprop);
+                if(all(tab(:,2) > n_min)) % Proceed only if we have enough obs in each partition
+                    % Calculate log likelihood
+                    [llikeprop, ~] = llikefunc(gpgeneral,prtprop,y,T.M,Z);
+                    lpriorprop = get_lprior(n,p,T.M,Mmax);
+                    % log-MH ratio
+                    % Uniform prior means we don't have anything but the likelihood 
+                    %   to determine acceptance since we have uniform priors on
+                    %   everything
+                    lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior + ...
+                            log(normpdf(v,0,sprop_w)) - log(normpdf(u,0,sprop_w));
+                    % waccept = 0;
+                    if lr > log(rand(1))
+                        T.llike = llikeprop;
+                        T.w = wprop;
+                        T.lprior = lpriorprop;
+                        %prt = prtprop;
+                        accepted = 1;
+                        % waccept = 1;
+                        %GP = GPprop;
+                    end
                 end
             end
         end

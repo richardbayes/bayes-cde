@@ -135,7 +135,9 @@ function [r,T,accepted] = MHstep2(y,X,T,gpgeneral,Mmax,n,n_min,Z,uprop,sprop_w)
         % Randomly select a weight to change
         ind = randsample(p,1);
         wprop = T.w;
-        wprop(ind) = wprop(ind) + normrnd(0,sprop_w);
+        u = normrnd(0,sprop_w);
+        v = ((T.w(ind) + u)/(1 + u) - T.w(ind)) / (T.w(ind) - 1); % value needed to come back
+        wprop(ind) = wprop(ind) + u;
         wprop = wprop ./ sum(wprop); % Normalize
         if all(wprop > 0)
             [prtprop,pflag] = multpartfunc_w2(X,T.S,wprop);
@@ -150,8 +152,8 @@ function [r,T,accepted] = MHstep2(y,X,T,gpgeneral,Mmax,n,n_min,Z,uprop,sprop_w)
                     % Uniform prior means we don't have anything but the likelihood 
                     %   to determine acceptance since we have uniform priors on
                     %   everything
-                    % Add in the dirichlet penalty since it is not "symmetric"
-                    lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior;
+                    lr = T.temp * (llikeprop - T.llike) + lpriorprop - T.lprior + ...
+                            log(normpdf(v,0,sprop_w)) - log(normpdf(u,0,sprop_w));
                     % waccept = 0;
                     if lr > log(rand(1))
                         T.llike = llikeprop;
