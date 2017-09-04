@@ -37,8 +37,8 @@
 %       http://research.cs.aalto.fi/pml/software/gpstuff/
 
 function lgp_graph(A,y,X)
-    % Find the tessellation with the highest marginal likelihood
-    [~,I] = max(A.llike);
+    % Find the tessellation with the highest posterior estimate
+    [~,I] = max(A.llike + A.lprior);
     
     % Plot the tesselation if p <= 2
     p = size(X,2);

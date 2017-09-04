@@ -205,6 +205,7 @@ function output = lgp_partition_model(y,X,varargin)
     Mpost = zeros(niter,1); % Number of partitions
     Spost = cell(niter,1); % Index on X, listing tesselation centers
     LLIKE = zeros(niter,1); % Keep track of marginal log-likelihood on each iteration.
+    LPRIOR = zeros(niter,1);
 
     naccepted = 0; % counting acceptance rate of the MCMC chain
     totals = [0 0 0 0];
@@ -362,6 +363,7 @@ function output = lgp_partition_model(y,X,varargin)
                     Spost{ii-burn} = T.S;
                     W(ii-burn,:) = T.w;
                     LLIKE(ii-burn) = T.llike;
+                    LPRIOR(ii-burn) = T.lprior;
                 end
             end
             all_acc_percs = accepts./totals;
@@ -372,7 +374,7 @@ function output = lgp_partition_model(y,X,varargin)
               'Spost',{Spost},'acceptancepercent',acceptancepercent,...
               'all_acc_percs',all_acc_percs,...
               'W',W,...
-              'llike',LLIKE);
+              'llike',LLIKE,'lprior',LPRIOR);
             if saveall
                 savenames = 1:mm;
             else
@@ -404,6 +406,7 @@ function output = lgp_partition_model(y,X,varargin)
                 Spost{ii-burn} = T.S;
                 W(ii-burn,:) = T.w;
                 LLIKE(ii-burn) = T.llike;
+                LPRIOR(ii-burn) = T.lprior;
             end
             if printyes
                 percs = accepts./totals;
@@ -434,7 +437,7 @@ function output = lgp_partition_model(y,X,varargin)
           'Spost',{Spost},'acceptancepercent',naccepted/(niter + burn),...
           'all_acc_percs',swap_percent,...
           'W',W,...
-          'llike',LLIKE);
+          'llike',LLIKE,'lprior',LPRIOR);
         % Save data
         fname = strcat(filepath,'mcmc.mat');
         save(fname,'output','swap_percent');

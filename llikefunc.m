@@ -46,7 +46,7 @@ function [ll, GP] = llikefunc(gp,prt,y,M,Z)
     gpcf1 = gpcf_sexp(gpcf1, 'lengthScale', h*repmat(2,[1 size(Zscaled,2)]));
     gp = gp_set(gp,'cf',gpcf1);
   
-    gp=gp_optim(gp,Zscaled,nypart,'opt',opt, 'optimf', @fminlbfgs);
+    gp=gp_optim_rdp(gp,Zscaled,nypart,'opt',opt, 'optimf', @fminlbfgs_rdp);
 
     % Change GP structure to drop the priors for the 'l' and 'sigma2'
     %   The LGP paper just optimizes the hyperparameters and then
