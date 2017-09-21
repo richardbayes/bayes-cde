@@ -46,7 +46,13 @@ function [ll, GP] = llikefunc(gp,prt,y,M,Z)
     gpcf1 = gpcf_sexp(gpcf1, 'lengthScale', h*repmat(2,[1 size(Zscaled,2)]));
     gp = gp_set(gp,'cf',gpcf1);
   
-    gp=gp_optim_rdp(gp,Zscaled,nypart,'opt',opt, 'optimf', @fminlbfgs_rdp);
+    try 
+        gp=gp_optim_rdp(gp,Zscaled,nypart,'opt',opt, 'optimf', @fminlbfgs_rdp);
+    catch
+        warning('Problem using gp_optim_rdp: returning -Inf for log-likelihood.');
+        ll = -Inf;
+        return;
+    end
 
     % Change GP structure to drop the priors for the 'l' and 'sigma2'
     %   The LGP paper just optimizes the hyperparameters and then
@@ -57,7 +63,14 @@ function [ll, GP] = llikefunc(gp,prt,y,M,Z)
     GP{ii} = gp;
     
     % Calculate Marginal likelihood and add it to the rest.
-    ll = ll - gpla_e([],gp,'x',Zscaled,'y',nypart);
+    try 
+        ll_tmp = -gpla_e([],gp,'x',Zscaled,'y',nypart);
+    catch
+        warning('Problem using gpla_e: returning -Inf for log-likelihood.');
+        ll = -Inf;
+        return;
+    end
+    ll = ll + ll_tmp;
   end
   
   

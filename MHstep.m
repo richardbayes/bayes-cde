@@ -19,6 +19,7 @@ function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,sprop_w,Z)
         IND = 1:n;
         IND = IND(ind == 0);
         Sprop = [T.S; randsample(IND,1)]; % Proposed Tesselation Center
+        % T.w
         Mprop = T.M + 1;
         % proposed partition
         [prtprop,pflag] = multpartfunc_w(X,Sprop,T.w);
@@ -56,6 +57,7 @@ function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,sprop_w,Z)
         % Randomly delete index from existing centers
         Sprop = T.S;
         Sprop(randsample(size(T.S,1),1)) = [];
+        %T.w
         Mprop = T.M - 1;
         % proposed partition
         [prtprop,pflag] = multpartfunc_w(X,Sprop,T.w);
@@ -94,7 +96,8 @@ function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,sprop_w,Z)
         IND = 1:n;
         IND = IND(ind == 0);
         Sprop = [Sprop; randsample(IND,1)];
-
+        %T.w
+        
         % Proposed M
         Mprop = T.M;
 
@@ -129,6 +132,7 @@ function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,sprop_w,Z)
         u = normrnd(0,sprop_w);
         v = ((T.w(ind) + u)/(1 + u) - T.w(ind)) / (T.w(ind) - 1); % value needed to come back (reversibility)
         wprop(ind) = wprop(ind) + u;
+        %T.S
         wprop = wprop ./ sum(wprop); % Normalize
         if all(wprop > 0)
             [prtprop,pflag] = multpartfunc_w(X,T.S,wprop);

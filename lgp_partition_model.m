@@ -68,18 +68,21 @@ function output = lgp_partition_model(y,X,varargin)
     ip = inputParser;
     ip.FunctionName = 'lgp_partition_model';
     ip.addOptional('burn',1000);
+    ip.addOptional('resume',[]);
     addParameter(ip,'filepath','./output/')
     addParameter(ip,'hottemp',.1)
     ip.addOptional('m',400);
     ip.addParameter('Mmax',0);
     ip.addOptional('n_min',50);
     ip.addOptional('niter',10^4);
+    ip.addOptional('nprint',10);
     %ip.addOptional('precision',[]);
     ip.addOptional('printyes',1);
     ip.addOptional('saveall',0);
     ip.addOptional('S',[]);
     addParameter(ip,'seed','shuffle');
     ip.addOptional('sprop_w',.1);
+    addParameter(ip,'suppress_errors_on_workers',0);
     ip.addOptional('swapfreq',1);
     ip.addOptional('w',[]);
     % ip.addOptional('xstar',[]);
@@ -94,17 +97,24 @@ function output = lgp_partition_model(y,X,varargin)
     Mmax = ip.Results.Mmax;
     niter = ip.Results.niter;
     n_min = ip.Results.n_min;
+    nprint = ip.Results.nprint;
     burn = ip.Results.burn;
+    resume = ip.Results.resume;
     % precision = ip.Results.precision;
     printyes = ip.Results.printyes;
     S = ip.Results.S;
     saveall = ip.Results.saveall;
     seed = ip.Results.seed;
     sprop_w = ip.Results.sprop_w;
+    suppress_errors_on_workers = ip.Results.suppress_errors_on_workers;
     swapfreq = ip.Results.swapfreq;
     w = ip.Results.w;
     
     rng(seed); % Set RNG for the client...
+    
+    if suppress_errors_on_workers
+        disp('NOTE: Errors suppressed on workers.');
+    end
     
     % Make output drive
     makefolder_status = mkdir(filepath);
@@ -128,18 +138,7 @@ function output = lgp_partition_model(y,X,varargin)
         X = newX;
     end
 
-    % Set original weights (if not supplied)
-    p = size(X,2);
-    if size(w,1) < p
-        w = ones(p,1)/sqrt(p);
-        disp('NOTE: Starting MCMC with equal covariate (tesselation) weights');
-    else
-        if size(w,1) < size(w,2)
-            w = w';
-        end
-    end
-
-    
+       
     n = size(y,1);
     % Assign Mmax if not assigned
     if Mmax == 0
@@ -180,25 +179,39 @@ function output = lgp_partition_model(y,X,varargin)
     %%%%% MCMC %%%%%%
     %%%%%%%%%%%%%%%%%
 
-    % Acceptance Percent for w
-
+    
     % Initial values  
-    if isempty(S)
-        S = randsample(n,1); % Index of tesselation centers (random start point)
-        M = size(S,1); % number of partitions
-    else
-        if size(S,1) < size(S,2)
-            S = S';
+    % Set original weights (if not supplied)
+    p = size(X,2);
+    if isempty(resume)
+        if length(w) < p 
+            w = ones(p,1)/sqrt(p);
+            disp('NOTE: Starting MCMC with equal covariate (tesselation) weights');
+        else
+            if size(w,1) < size(w,2)
+                w = w';
+            end
         end
-        M = size(S,1);
+
+        if isempty(S)
+            S = randsample(n,1); % Index of tesselation centers (random start point)
+            M = size(S,1); % number of partitions
+        else
+            if size(S,1) < size(S,2)
+                S = S';
+            end
+            M = size(S,1);
+        end
+
+
+        [prt,pflag] = multpartfunc_w(X,S,w); % Current Tesselation Index
+        if pflag
+            error('Tessellation has equivalent centers due to the S and w combination. Change start values.')
+        end
+        % Log-likelihood
+        [llike, ~] = llikefunc(gpgeneral,prt,y,M,Z);
+        lprior = get_lprior(n,size(X,2),M,Mmax);
     end
-    [prt,pflag] = multpartfunc_w(X,S,w); % Current Tesselation Index
-    if pflag
-        error('Tessellation has equivalent centers due to the S and w combination. Change start values.')
-    end
-    % Log-likelihood
-    [llike, ~] = llikefunc(gpgeneral,prt,y,M,Z);
-    lprior = get_lprior(n,size(X,2),M,Mmax);
     
     % Initialize vectors which hold posterior samples
     W = zeros(niter,p); % Weights
@@ -234,6 +247,23 @@ function output = lgp_partition_model(y,X,varargin)
     temps = 1.01 - 1./(1 + exp(js));
 
     spmdsize = min([poolsize,mm]);
+    if ~isempty(resume)
+        files = dir2(resume);
+        Sres = cell(length(files),1);
+        wres = cell(length(files),1);
+        for ii=1:spmdsize
+            try 
+                load(strcat([resume,files(ii).name]));
+            catch
+                error('Cannot load files to resume MCMC. Verify parpool size and number of files match.')
+            end
+            nnn = length(output.Spost);
+            Sres{ii} = output.Spost{nnn};
+            wres{ii} = output.W(nnn,:)';
+        end
+        clear output;
+    end
+    
         
     if spmdsize < 2
         disp('NOTE: Must have at least two processes to do parallel tempering.');
@@ -245,9 +275,27 @@ function output = lgp_partition_model(y,X,varargin)
   
     if(spmdsize > 1)
         spmd(spmdsize)
+            if suppress_errors_on_workers
+                oldwarnstate0 = warning('off','all');
+            end
+            % Suppress Matlab error for nearly singular matrix
+            oldwarnstate = warning('off','MATLAB:nearlySingularMatrix');
             myname = labindex;
             master = 1; % master process labindex
             mytemp = temps(myname);
+            
+            if ~isempty(resume)
+                S = Sres{myname};
+                w = wres{myname};
+                M = length(S);
+                [prt,pflag] = multpartfunc_w(X,S,w); % Current Tesselation Index
+                if pflag
+                    error('Tessellation has equivalent centers due to the S and w combination. Change start values.')
+                end
+                % Log-likelihood
+                [llike, ~] = llikefunc(gpgeneral,prt,y,M,Z);
+                lprior = get_lprior(n,size(X,2),M,Mmax);
+            end
             % Set up a Tessellation Structure
             T = struct('S',S,'M',M,'w',w,'temp',mytemp,...
                 'llike',llike,'lprior',lprior);
@@ -343,7 +391,7 @@ function output = lgp_partition_model(y,X,varargin)
                     end
                 end
                 if printyes
-                    if mod(ii,1) == 0
+                    if mod(ii,nprint) == 0
                         disp(['i = ',num2str(ii),', ID = ',num2str(myname),', llike = ',num2str(T.llike),...
                             ', accept = ',num2str(naccepted/ii),...
                             ', swapaccept = ',num2str(swapaccepttotal),'/',num2str(swaptotal),...
@@ -354,9 +402,6 @@ function output = lgp_partition_model(y,X,varargin)
                         end
                     end
                 end
-
-
-    
                 if ii > burn
                     % Now Store Values
                     Mpost(ii-burn) = T.M;
@@ -365,6 +410,12 @@ function output = lgp_partition_model(y,X,varargin)
                     LLIKE(ii-burn) = T.llike;
                     LPRIOR(ii-burn) = T.lprior;
                 end
+            end
+            % Turn on suppressed warnings
+            warning(oldwarnstate);
+            if suppress_errors_on_workers
+                warning(oldwarnstate0);
+                % warning('on','all')
             end
             all_acc_percs = accepts./totals;
             acceptancepercent = naccepted/(niter+burn);
@@ -388,6 +439,7 @@ function output = lgp_partition_model(y,X,varargin)
             output = [];
         end
         output = [];
+        
     elseif(spmdsize == 1)
         T = struct('S',S,'M',M,'w',w,'temp',1,'llike',llike,...
             'lprior',lprior);
@@ -410,7 +462,7 @@ function output = lgp_partition_model(y,X,varargin)
             end
             if printyes
                 percs = accepts./totals;
-                if ii <= burn && mod(ii,10) == 0
+                if ii <= burn && mod(ii,nprint) == 0
                     disp(['Burn-in ',num2str(ii),'/',num2str(burn),...
                       ', log-lik = ',num2str(T.llike),...
                       ', acceptance = ',num2str(naccepted/ii),...
@@ -419,7 +471,7 @@ function output = lgp_partition_model(y,X,varargin)
                       ', move = ',num2str(percs(3)),...
                       ', weight = ',num2str(percs(4)),...
                       ', Partitions = ',num2str(T.M)]) % print every 10 iterations
-                elseif ii > burn && mod(ii,10) == 0
+                elseif ii > burn && mod(ii,nprint) == 0
                     disp(['Iteration ',num2str(ii-burn),'/',num2str(niter),...
                       ', log-lik = ',num2str(T.llike),...
                       ', acceptance = ',num2str(naccepted/ii),...

@@ -502,11 +502,11 @@ while(true)
       cntr = cntr + 1;
       if cntr > 100 % arbitrary number -- not sure if it is tuned well
           data.bracket_exitflag = 4040;
-          loopnum = 2
-          f_alpha = f_alpha
-          f_alpha_orig = f_alpha_orig
-          grad_orig = grad_orig
-          grad = grad
+%          loopnum = 2
+%          f_alpha = f_alpha
+%          f_alpha_orig = f_alpha_orig
+%          grad_orig = grad_orig
+%          grad = grad
           return;
       end
       %%%%
@@ -680,11 +680,11 @@ while(true)
       cntr = cntr + 1;
       if cntr > 100 % arbitrary number -- not sure if it is tuned well
           data.bracket_exitflag = 4040;
-          loopnum = 3
-          f_alpha = f_alpha
-          f_alpha_orig = f_alpha_orig
-          grad_orig = grad_orig
-          grad = grad
+%          loopnum = 3
+%          f_alpha = f_alpha
+%          f_alpha_orig = f_alpha_orig
+%          grad_orig = grad_orig
+%          grad = grad
           return;
       end
       %%%%
@@ -832,11 +832,11 @@ while(true)
       cntr = cntr + 1;
       if cntr > 100 % arbitrary number -- not sure if it is tuned well
           data.bracket_exitflag = 4040;
-          loopnum = 5
-          f_alpha = f_alpha
-          f_alpha_orig = f_alpha_orig
-          grad_orig = grad_orig
-          grad = grad
+%          loopnum = 5
+%          f_alpha = f_alpha
+%          f_alpha_orig = f_alpha_orig
+%          grad_orig = grad_orig
+%          grad = grad
           return;
       end
       %%%%
