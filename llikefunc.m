@@ -1,9 +1,10 @@
-function [ll, GP] = llikefunc(gp,prt,y,M,Z)
+function [ll, GP, allLL] = llikefunc(gp,prt,y,M,Z)
   % This function calculates the marginal likelihood, but also returns
   %   the gaussian processes with their optimized hyperparameters in GP.
   %   GP can then be passed to another function (mdleavgdraw) to 
   %   obtain the mean and covariance matrix of the latent function f.
   ll = 0;
+  allLL = zeros(1,M);
   % Calculate and add up the likelihood contribution in each partition
   GP = cell(M,1);
   m = max(size(Z,2));
@@ -64,12 +65,14 @@ function [ll, GP] = llikefunc(gp,prt,y,M,Z)
     
     % Calculate Marginal likelihood and add it to the rest.
     try 
-        ll_tmp = -gpla_e([],gp,'x',Zscaled,'y',nypart);
+        [~,ll_tmp,~] = gpla_e([],gp,'x',Zscaled,'y',nypart);
+        ll_tmp = -ll_tmp;
     catch
         warning('Problem using gpla_e: returning -Inf for log-likelihood.');
         ll = -Inf;
         return;
     end
+    allLL(ii) = ll_tmp;
     ll = ll + ll_tmp;
   end
   
