@@ -1,4 +1,47 @@
+%     This file is part of bayes-cde.
+% 
+%     bayes-cde is free software: you can redistribute it and/or modify
+%     it under the terms of the GNU General Public License as published by
+%     the Free Software Foundation, either version 3 of the License, or
+%     (at your option) any later version.
+% 
+%     bayes-cde is distributed in the hope that it will be useful,
+%     but WITHOUT ANY WARRANTY; without even the implied warranty of
+%     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%     GNU General Public License for more details.
+% 
+%     You should have received a copy of the GNU General Public License
+%     along with bayes-cde.  If not, see <http://www.gnu.org/licenses/>.
+%
+%     Copyright 2017 Richard Payne.
+%
+%     NOTE: Be sure the GPstuff toolbox is included in the Matlab path.
+%       GPstuff must be downloaded separately from:
+%       http://research.cs.aalto.fi/pml/software/gpstuff/
+
 function [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,sprop_w,Z)
+% Performs a Metropolis-Hastings step to search the posterior tesselation
+%   space in the MCMC algorithm.
+%
+% Inputs
+% y: the dependent variable vector of length n
+% X: the covariate design matrix
+% T: the current tessellation from which a change is proposed
+% gpgeneral: the generic LGP GP object
+% Mmax: the maximum number of partition elements allowed
+% n: the number of observed data points
+% n_min: the minimum number of observations allowed in each partition
+%   element.
+% sprop_w: the proposal variance for the weights
+% Z: the grid that discretizes y
+%
+% Outputs
+% r: a vector of length 4 with three zeros and a one.  The placement of the
+%   1 indicates which move was proposed: birth, death, move, change.
+% T: the new tessellation if the move is accepted, the old tessellation
+%   otherwise.
+% accepted: integer. 1 if the proposed move was accepted.
+
     p = size(X,2);
     accepted = 0;
     % Determine which step to do 

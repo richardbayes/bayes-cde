@@ -14,7 +14,7 @@
 %        
 %        If X has two columns, the second column of X is plotted against
 %          the first column of X, with colors indicating the partition.
-
+%
 %     This file is part of bayes-cde.
 % 
 %     bayes-cde is free software: you can redistribute it and/or modify

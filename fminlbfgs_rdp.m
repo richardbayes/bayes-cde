@@ -164,6 +164,11 @@ function [x,fval,exitflag,output,grad]=fminlbfgs_rdp(funfcn,x_init,optim)
 %     along with bayes-treed-cde.  If not, see <http://www.gnu.org/licenses/>.
 %
 %     Copyright 2016-2017, Richard Payne
+%
+%     This file has some slight modifications to throw errors and avoid
+%       infinite loops.  Changes to the original file are generally denoted
+%       with 'rdp'
+
 
 
 % Read Optimization Parameters

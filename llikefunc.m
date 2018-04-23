@@ -1,8 +1,44 @@
+%     This file is part of bayes-cde.
+% 
+%     bayes-cde is free software: you can redistribute it and/or modify
+%     it under the terms of the GNU General Public License as published by
+%     the Free Software Foundation, either version 3 of the License, or
+%     (at your option) any later version.
+% 
+%     bayes-cde is distributed in the hope that it will be useful,
+%     but WITHOUT ANY WARRANTY; without even the implied warranty of
+%     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%     GNU General Public License for more details.
+% 
+%     You should have received a copy of the GNU General Public License
+%     along with bayes-cde.  If not, see <http://www.gnu.org/licenses/>.
+%
+%     Copyright 2017 Richard Payne.
+%
+%     NOTE: Be sure the GPstuff toolbox is included in the Matlab path.
+%       GPstuff must be downloaded separately from:
+%       http://research.cs.aalto.fi/pml/software/gpstuff/
+
 function [ll, GP, allLL] = llikefunc(gp,prt,y,M,Z)
   % This function calculates the marginal likelihood, but also returns
   %   the gaussian processes with their optimized hyperparameters in GP.
   %   GP can then be passed to another function (mdleavgdraw) to 
   %   obtain the mean and covariance matrix of the latent function f.
+  % 
+  % Inputs
+  % gp: a gp object
+  % prt: a vector of integers of the same length of the data where integers
+  %      indicate the partition each data point belongs to
+  % y: the dependent numeric vector of length n
+  % M: The number of partition regions
+  % Z: the grid that y is discretized upon for the logistic Gaussian
+  %      process.
+  %
+  % Outputs
+  % ll: numeric, the log-likelihood of the partition
+  % GP: the optimized gp objects for each partition region
+  % allLL: the log-likelihood for each of the M partition regions
+  
   ll = 0;
   allLL = zeros(1,M);
   % Calculate and add up the likelihood contribution in each partition

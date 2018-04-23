@@ -52,6 +52,9 @@ function [gp, varargout] = gp_optim_rdp(gp, x, y, varargin)
 %     along with bayes-treed-cde.  If not, see <http://www.gnu.org/licenses/>.
 %
 %     Copyright 2016-2017, Richard Payne
+%      
+%     This file has been modified to accommodate handling of errors and
+%     changes are generally denoted with 'rdp'.
 
 
 ip=inputParser;

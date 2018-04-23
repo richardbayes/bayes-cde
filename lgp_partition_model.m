@@ -1,47 +1,78 @@
 %  LGP_PARTITION_MODEL: Fit conditional densities using a partition model
-%                       framework.
+%                       framework utilizing MCMC parallel tempering to
+%                       search the posterior.
 %
 %  syntax:
+%  parpool(n_workers) % n_workers is an integer specifying the number of
+%                     % parallel chains used for parallel tempering.
 %  results = lgp_partition_model(y,X,varargin)
 %
+%  Required Arguments:
 %  y: nx1 depedent variable to obtain a density estimate of
-%  X: nxp design matrix of covariates, each column representing a
+%  X: nxp design matrix of continous covariates, each column representing a
 %    different variable.  Analysis will be done on the standardized
-%    version (done in code below).
+%    version (automatically done in code).
 %
 %  Optional Arguments:
-%  niter: number of MCMC iterations. Default = 10,000
 %  burn: number of burn in iterations.  Default = 1,000.
+%  filepath: A string with a path to where the output will be saved.
+%  hottemp: the lowest value of the inverse temperatures for parallel
+%    tempering.  Default is .1. 
 %  m: number of grid points for the density estimation.  Default = 400.
 %  Mmax: maximum number of partitions. Defaults to 10.
+%  niter: number of MCMC iterations. Default = 10,000
 %  n_min: minimum number of observations required in a partition.  Defaults
 %    to 50.
-%  precision: a tuning parameter for the proposal distribution for the
-%    weights, w.  Higher precision decreases the proposal variance and
-%    yields higher acceptance rates of moves in the weight vector w.
-%    Default: 1.
+%  nprint: Integer. How often to print MCMC statistics.  Default is once 
+%     every 10 iterations. 
 %  printyes:  (0 or 1) Whether or not to print statistics throughout MCMC.
-%    Defaults to 1.
+%    Defaults to 1 (print).
+%  resume: a filepath to the directory of the output of the MCMC run from
+%     which to continue MCMC.  The last value from the output in the 
+%     directory will be used for the starting values of the chain.
+%  S: A vector with the indices (on X) which specify the tessellation
+%     centers. If empty, a random tessellation center is chosen.
+%  seed: An integer setting the random seed.  The default is a random seed.
+%  saveall: (0 or 1) If 0, only the untempered chain is saved to the
+%     directory specified in "filepath" argument.  If 1, output from each
+%     tempered chain is also saved.
+%  sprop_w: The proposal standard devition for the weights of the
+%     tessellation.  Default is .1.
+%  suppress_errors_on_workers: (0 or 1).  If 0, errors are printed from the
+%     workers, otherwise, errors are suppressed on parallel workers.
+%  swapfreq: The frequency parallel chains are proposed to be swapped.
+%     Default is 1. 
 %  w: a px1 vector of initial values of the weights.  
 %     Default is equal weight (1/sqrt(p),...,1/sqrt(p)).
 %
-%  The output of the function is a structure with the following elements:
+%  The output of the function is saved in the directory specified by the
+%    'filepath' argument with the name mcmc_idX.mat where X is the worker
+%    number.  mcmc_id1.mat is the untempered chain.  When the file is
+%    loaded into the Matlab workspace, the output structure contains the
+%    following elements.
 %  Mpost:  A vector with the number of partitions on each iteration of
 %    the MCMC chain.
 %  Spost:  A cell object with the indices of the data points which are
 %    centers of the tesselation at each iteration of the MCMC chain.
 %  acceptancepercent:  the percentage of time a move was accepted in the
 %    MCMC chain (including burnin)
-%  wacceptancepercent:  the percentage of time a move was accepted when a
-%    change in weights was proposed.
+%  all_acc_percs: a vector with 4 percentages of acceptances for birth,
+%    death, move, and change steps, respectively.
 %  W: A niter by p matrix with the weights at each iteration of the MCMC
-%  llike: the marginal likelihood of the data on each iteratin of the
+%  swap_accept: the acceptance rate of chains swapping.
+%  n_proposed: the number of times a birth, death, move, and change steps
+%    were proposed.
+%  n_accepted: the number of times a birth, death, move, and change steps
+%    were accepted.
+%  llike: the marginal likelihood of the data on each iteration of the
 %    MCMC algorithm.
+%  lprior: the log of the prior for each tessellation for each iteration of
+%    the MCMC chain.
 %
 %  Use lgp_graph to get some basic graphs of the output.  
 % 
 %  See also, LGP_GRAPH.
-
+% 
 %     This file is part of bayes-cde.
 % 
 %     bayes-cde is free software: you can redistribute it and/or modify
