@@ -28,8 +28,8 @@ n = 1000;
 X = [rand(n,1)*5, normrnd(0,1,n,1), normrnd(0,5,n,1)];
 
 % MCMC diagnostics
-niter = 1000;
-burn = 1000;
+niter = 100;
+burn = 100;
 
 % Case 1 - Regression.
 rng(20382)
@@ -39,10 +39,10 @@ plot(X(:,1),y1,'o')
 rng(111);
 start = cputime;
 result1 = lgp_partition_model(y1,X(:,1),'niter',niter,...
-    'burn',burn,'precision',5);
+    'burn',burn,'filepath','output1/','seed',1);
 finish = cputime;
 seconds1 = finish - start;
-
+% Plot results
 lgp_graph(result1,y1,X(:,1))
 
 % Case 2 - Two variables
@@ -54,7 +54,7 @@ plot(X(:,2),y2,'o')
 rng(222);
 start = cputime;
 result2 = lgp_partition_model(y2,X(:,1:2),'niter',niter,...
-    'burn',burn,'precision',5);
+    'burn',burn,'filepath','output2/','seed',2);
 finish = cputime;
 seconds2 = finish - start;
 
@@ -71,7 +71,7 @@ plot(X(:,3),y3,'o')
 rng(333);
 start = cputime;
 result3 = lgp_partition_model(y3,X,'niter',niter,...
-    'burn',burn,'precision',5);
+    'burn',burn,'filepath','output3/','seed',3);
 finish = cputime;
 seconds3 = finish - start;
 
@@ -82,7 +82,7 @@ lgp_graph(result3,y3,X)
 rng(333);
 start = cputime;
 result4 = lgp_partition_model(y2,X,'niter',niter,...
-    'burn',burn,'precision',5);
+    'burn',burn,'filepath','output4/','seed',4);
 finish = cputime;
 seconds4 = finish - start;
 
@@ -90,4 +90,11 @@ lgp_graph(result4,y2,X)
 
 % Final Weights
 result4.W(niter,:)
+
+% EXAMPLE WITH PARALLEL TEMPERING
+parpool(4) % Start a paralle pool with 4 cores
+result1_parallel = lgp_partition_model(y1,X(:,1),'niter',niter,...
+    'burn',burn,'filepath','output1_parallel/','seed',1);
+load('output1_parallel/mcmc_id1.mat') % load untempered chain
+lgp_graph(output,y1,X(:,1))
 
