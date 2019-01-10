@@ -338,6 +338,7 @@ function output = lgp_partition_model(y,X,varargin)
             if myname == master
                 disp('Starting MCMC...')
             end
+            tic
             for ii=1:(niter+burn)
                 % Perform MH step for each parallel region
                 [r,T,accepted] = MHstep(y,X,T,gpgeneral,Mmax,n,n_min,sprop_w,Z);
@@ -442,6 +443,7 @@ function output = lgp_partition_model(y,X,varargin)
                     LPRIOR(ii-burn) = T.lprior;
                 end
             end
+            seconds = toc;
             % Turn on suppressed warnings
             warning(oldwarnstate);
             if suppress_errors_on_workers
@@ -458,7 +460,8 @@ function output = lgp_partition_model(y,X,varargin)
               'W',W,'swap_accept',swapaccepttotal/swaptotal,...
               'n_proposed',totals,...
               'n_accepted',accepts,...
-              'llike',LLIKE,'lprior',LPRIOR);
+              'llike',LLIKE,'lprior',LPRIOR,...
+              'seconds', seconds);
             if saveall
                 savenames = 1:mm;
             else
