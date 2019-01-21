@@ -22,7 +22,8 @@
 % This file runs several examples of conditional density
 %   estimation using a partition model framework.
 
-
+addpath(genpath('../src'))
+addpath(genpath('../gpstuff'))
 
 % Generate design matrix
 rng(110038);
