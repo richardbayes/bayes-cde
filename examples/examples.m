@@ -22,6 +22,8 @@
 % This file runs several examples of conditional density
 %   estimation using a partition model framework.
 
+
+
 % Generate design matrix
 rng(110038);
 n = 1000;
