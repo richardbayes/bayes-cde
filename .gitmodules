@@ -1,0 +1,3 @@
+[submodule "gpstuff"]
+	path = gpstuff
+	url = https://github.com/gpstuff-dev/gpstuff
