@@ -20,6 +20,11 @@
 
 addpath(genpath('../src'))
 addpath(genpath('../gpstuff'))
+% Read in data;
+dat = readtable('../data/section4_3.csv','Delimiter',',',...
+    'ReadVariableNames',false);
+y = dat{:,1};
+X = dat{:,2:3};
 % load untempered chain (after 20,000 burn in)
 load('../output/section4_3_rep2/mcmc_id1.mat');
 % find posterior maximum
