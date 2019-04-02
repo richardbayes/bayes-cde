@@ -8,7 +8,7 @@ plot(out)
 # jpeg('figs/LDBDPdensity.jpg',
 #      res=300,width=6,height=6,units='in')
 setEPS()
-postscript('figs/LDBDPdensityclean.eps', width=6, height=6)
+postscript('figs/LDBDPdensity.eps', width=6, height=6)
   par(mfrow=c(2,2))
   y <- alldat[, 1]
   
@@ -24,7 +24,7 @@ postscript('figs/LDBDPdensityclean.eps', width=6, height=6)
     ylab="Density",
     ylim=c(0,8),
     las=1,
-    main=expression('Posterior Density at x'[1]*'=.76, x'[2]*'=.76')
+    main=expression('x'[1]*'=.76, x'[2]*'=.76')
   )
   
   lines(out$grid,out$densp.l[ind,],lwd=1,type="l",lty=2)
@@ -45,7 +45,7 @@ postscript('figs/LDBDPdensityclean.eps', width=6, height=6)
     ylab="Density",
     las=1,
     ylim=c(0,8),
-    main=expression('Posterior Density at x'[1]*'=.9, x'[2]*'=.9')
+    main=expression('x'[1]*'=.9, x'[2]*'=.9')
   )
   
   lines(out$grid,out$densp.l[ind,],lwd=1,type="l",lty=2)
@@ -65,7 +65,7 @@ postscript('figs/LDBDPdensityclean.eps', width=6, height=6)
     xlab="Y",
     ylab="Density",
     las=1,
-    main=expression('Posterior Density at x'[1]*'=.1, x'[2]*'=.8')
+    main=expression('x'[1]*'=.1, x'[2]*'=.8')
   )
   
   lines(out$grid,out$densp.l[ind,],lwd=1,type="l",lty=2)
@@ -88,7 +88,7 @@ postscript('figs/LDBDPdensityclean.eps', width=6, height=6)
     ylab="Density",
     ylim=c(0,3.5),
     las=1,
-    main=expression('Posterior Density at x'[1]*'=.8, x'[2]*'=.1')
+    main=expression('x'[1]*'=.8, x'[2]*'=.1')
   )
   
   lines(out$grid,out$densp.l[ind,],lwd=1,type="l",lty=2)
@@ -99,9 +99,3 @@ postscript('figs/LDBDPdensityclean.eps', width=6, height=6)
   #curve(dgamma(x,10,2),col='red',add=TRUE)
   curve(newgamma(x),lwd=2,add=TRUE)
 dev.off()
-
-
-
-
-
-
