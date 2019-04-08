@@ -1,9 +1,5 @@
-addpath('/home/grad/richard/Documents/mallick/density3/competingmethods/BPM/');
-dat = table2array(readtable('../../data/sim6.csv','Delimiter',',','ReadVariableNames',false));
+dat = table2array(readtable('../../data/section4_2.csv','Delimiter',',','ReadVariableNames',false));
 dat = dat(:,1:3);
-%rng(1531)
-%ntest = 10;
-%datpred = dat(randsample(size(dat,1),ntest),:);
 datpred = [.1 .8;
            .8 .1;
            .76 .76;
