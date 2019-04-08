@@ -28,6 +28,6 @@ X = dat{:,2};
 % Parallel Example
 parpool(8);
 result = lgp_partition_model(y,X,'niter',10000,'burn',0,'seed',5315,...
-    'filepath','../output/supplementary_F_new_rep1/','saveall',1,'nprint',1000,'n_min',15);
+    'filepath','../output/supplementary_F_rep1/','saveall',1,'nprint',1000,'n_min',15);
 
 % see supplementary_F_figs.m for posterior analysis
