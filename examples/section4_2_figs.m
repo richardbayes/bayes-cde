@@ -20,7 +20,6 @@
 
 addpath(genpath('../src'))
 addpath(genpath('../gpstuff'))
-addpath('../export_fig');
 % Read in data;
 dat = readtable('../data/section4_2.csv','Delimiter',',','ReadVariableNames',false);
 y = dat{:,1};
@@ -54,12 +53,10 @@ line([.75,.75],[.75,1],'Color','black');
 xlabel('X_1');
 ylabel('X_2');
 % saveas(gcf,'../figs/section4_2.jpg')
-fig = gcf;
-fig.PaperUnits = 'inches';
-fig.PaperPosition = [0 0 3.5 3.5];
-set(fig, 'Color', 'w');
+%fig = gcf;
+%fig.PaperUnits = 'inches';
+%fig.PaperPosition = [0 0 3.5 3.5];
 %print('figs/section4_2','-depsc')
-export_fig figs/section4_2.eps
 
 % Plot posterior vs true densities  
 figure()
@@ -88,12 +85,10 @@ hold on
     plot(xx,normpdf(xx,1,sqrt(.5)),'k','LineWidth',2)
 hold off
 title('X_1 > .75, X_2 > .75');
-fig = gcf;
-fig.PaperUnits = 'inches';
-fig.PaperPosition = [0 0 10 3.5];
-set(fig, 'Color', 'w');
+%fig = gcf;
+%fig.PaperUnits = 'inches';
+%fig.PaperPosition = [0 0 10 3.5];
 %print('figs/section4_2dens','-depsc') 
-export_fig figs/section4_2dens.eps
 
 % save data for use in other programs (paper graphics made in R due to
 %   Matlab graphics issues)
@@ -162,15 +157,15 @@ colormap gray
 xlabel('Partition size');
 ylabel('Inverse temperature');
 %title('Proportion of Partition Size by Inverse Temperature');
-fig = gcf;
-fig.PaperUnits = 'inches';
-fig.PaperPosition = [0 0 4 3];
-print('figs/section4_2partsize', '-depsc');
+%fig = gcf;
+%fig.PaperUnits = 'inches';
+%fig.PaperPosition = [0 0 4 3];
+%print('figs/section4_2partsize', '-depsc');
 
 plot(LPOST(:,1),'k')
 xlabel('Iteration');
 ylabel('Log posterior');
-fig = gcf;
-fig.PaperUnits = 'inches';
-fig.PaperPosition = [0 0 6 3];
-print('figs/section4_2trace','-depsc')
+%fig = gcf;
+%fig.PaperUnits = 'inches';
+%fig.PaperPosition = [0 0 6 3];
+%print('figs/section4_2trace','-depsc')

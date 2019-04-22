@@ -28,7 +28,7 @@ X = dat{:,2:3};
 % Parallel Example
 parpool(8);
 
-% Re-run with outputting more acceptance data
+% MCMC
 result = lgp_partition_model(y,X,'niter',20000,'burn',0,'seed',11353,...
     'filepath','../output/section4_2_rep1/','saveall',1,'nprint',1000,'n_min',25,'sprop_w',.01);
 result = lgp_partition_model(y,X,'niter',40000,'burn',0,'seed',53332,...
@@ -38,6 +38,4 @@ result = lgp_partition_model(y,X,'niter',40000,'burn',0,'seed',321,...
     'filepath','../output/section4_2_rep3/','saveall',1,'nprint',1000,'n_min',25,...
     'sprop_w',.01,'resume','../output/section4_2_rep2/');
 
-% See section4_3_figs.m for posterior analysis
-
-
+% See section4_2_figs.m for posterior analysis
