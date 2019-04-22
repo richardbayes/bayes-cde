@@ -63,6 +63,3 @@ rdat = [xgrid', postdens(1).m, postdens(2).m, postdens(3).m, postdens(4).m, ...
     postdens(3).lb, postdens(3).ub,...
     postdens(4).lb, postdens(4).ub];
 csvwrite('Rfigs/data/section4_2_BPM.csv', rdat);
-
-
-
