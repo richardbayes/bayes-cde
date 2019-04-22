@@ -8,8 +8,8 @@ plot(out)
 # jpeg('figs/LDTFPdensity.jpg',
 #      res=300,width=6,height=6,units='in')
 setEPS()
-postscript('figs/LDTFPdensity.eps', width=6, height=6)
-  par(mfrow=c(2,2))
+postscript('figs/LDTFPdensity.eps', width=8, height=3)
+  par(mfrow=c(1, 4))
   # .76,.76
   ind <- 1
   plot(
@@ -18,7 +18,7 @@ postscript('figs/LDTFPdensity.eps', width=6, height=6)
     lwd=1,
     type="l",
     lty=2,
-    xlab="Y",
+    xlab="",
     ylab="Density",
     ylim=c(0,.8),
     las=1,
@@ -37,8 +37,8 @@ postscript('figs/LDTFPdensity.eps', width=6, height=6)
     lwd=1,
     type="l",
     lty=2,
-    xlab="Y",
-    ylab="Density",
+    xlab="",
+    ylab="",
     las=1,
     ylim=c(0,.8),
     main=expression('x'[1]*'=.9, x'[2]*'=.9')
@@ -56,8 +56,8 @@ postscript('figs/LDTFPdensity.eps', width=6, height=6)
     lwd=1,
     type="l",
     lty=2,
-    xlab="Y",
-    ylab="Density",
+    xlab="",
+    ylab="",
     las=1,
     main=expression('x'[1]*'=.1, x'[2]*'=.8')
   )
@@ -75,8 +75,8 @@ postscript('figs/LDTFPdensity.eps', width=6, height=6)
     lwd=1,
     type="l",
     lty=2,
-    xlab="Y",
-    ylab="Density",
+    xlab="",
+    ylab="",
     ylim=c(0,.3),
     las=1,
     main=expression('x'[1]*'=.8, x'[2]*'=.1')
@@ -84,4 +84,5 @@ postscript('figs/LDTFPdensity.eps', width=6, height=6)
   lines(out$grid,out$densl[ind,],lwd=1,type="l",lty=2)
   lines(out$grid,out$densm[ind,],lwd=2,type="l",lty=2)
   curve(dgamma(x,10,2),lwd=2,add=TRUE)
+  mtext("Y", 1, outer = TRUE, line = -2)
 dev.off()
