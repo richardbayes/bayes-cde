@@ -8,8 +8,8 @@ plot(out)
 #jpeg('figs/DPcdensity.jpg',
 #     res=300,width=6,height=6,units='in')
 setEPS()
-postscript('figs/DPcdensity.eps', width=6, height=6)
-  par(mfrow=c(2,2))
+postscript('figs/DPcdensity.eps', width=8, height=3)
+  par(mfrow=c(1,4))
   
   # .76,.76
   ind <- 3
@@ -19,7 +19,7 @@ postscript('figs/DPcdensity.eps', width=6, height=6)
     lwd=1,
     type="l",
     lty=2,
-    xlab="Y",
+    xlab="",
     ylab="Density",
     ylim=c(0,.6),
     main=expression('x'[1]*'=.76, x'[2]*'=.76'),
@@ -38,8 +38,8 @@ postscript('figs/DPcdensity.eps', width=6, height=6)
     lwd=1,
     type="l",
     lty=2,
-    xlab="Y",
-    ylab="Density",
+    xlab="",
+    ylab="",
     ylim=c(0,.6),
     las=1,
     main=expression('x'[1]*'=.9, x'[2]*'=.9')
@@ -57,8 +57,8 @@ postscript('figs/DPcdensity.eps', width=6, height=6)
     lwd=1,
     type="l",
     lty=2,
-    xlab="Y",
-    ylab="Density",
+    xlab="",
+    ylab="",
     las=1,
     main=expression('x'[1]*'=.1, x'[2]*'=.8')
   )
@@ -76,8 +76,8 @@ postscript('figs/DPcdensity.eps', width=6, height=6)
     lwd=1,
     type="l",
     lty=2,
-    xlab="Y",
-    ylab="Density",
+    xlab="",
+    ylab="",
     las=1,
     main=expression('x'[1]*'=.8, x'[2]*'=.1')
   )
@@ -85,4 +85,6 @@ postscript('figs/DPcdensity.eps', width=6, height=6)
   lines(out$grid,out$densp.l[ind,],lwd=1,type="l",lty=2)
   lines(out$grid,out$densp.m[ind,],lwd=2,type="l",lty=2)
   curve(dgamma(x,10,2),lwd=2,add=TRUE)
+  
+  mtext("Y", 1, outer = TRUE, line = -2)
 dev.off()
