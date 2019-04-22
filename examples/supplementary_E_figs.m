@@ -21,11 +21,11 @@
 addpath(genpath('../src'))
 addpath(genpath('../gpstuff'))
 % Read in data;
-dat = readtable('../data/supplementary_F.csv','Delimiter',',','ReadVariableNames',false);
+dat = readtable('../data/supplementary_E.csv','Delimiter',',','ReadVariableNames',false);
 y = dat{:,1};
 X = dat{:,2};
 
-load('../output/supplementary_F_rep1/mcmc_id1.mat');
+load('../output/supplementary_E_rep1/mcmc_id1.mat');
     
 [~,I] = max(output.llike + output.lprior);
 plot(output.llike + output.lprior)
@@ -76,8 +76,8 @@ title('X < .25');
 fig = gcf;
 fig.PaperUnits = 'inches';
 fig.PaperPosition = [0 0 7 3];
-%saveas(fig,'../figs/supplementary_Fpdens.jpg')
-%print('../figs/supplementary_Fdens','-depsc')
+%saveas(fig,'../figs/supplementary_Epdens.jpg')
+%print('../figs/supplementary_Edens','-depsc')
 
 % Save data and make official paper figures in R
 [p1, pq1, xt1] = lgpdens(y(prt == 1), 'percentiles', [2.5, 97.5]);
@@ -87,7 +87,4 @@ p = [p1, p2, p3];
 pq = [pq1, pq2, pq3];
 xt = [xt1, xt2, xt3];
 rdat = [xt, p, pq];
-csvwrite('Rfigs/data/supplementary_F.csv', rdat);
-
-
-
+csvwrite('Rfigs/data/supplementary_E.csv', rdat);
