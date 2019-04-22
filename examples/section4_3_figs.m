@@ -29,8 +29,6 @@ X = dat{:,2:3};
 load('../output/section4_3_rep2/mcmc_id1.mat');
 % find posterior maximum
 [~,I] = max(output.llike + output.lprior);
-% log-posterior traceplot
-plot(output.llike + output.lprior)
 % normalize data
 Xn = zscore(X);
 % get partitions for MAP partition
@@ -44,10 +42,21 @@ hold on
         scatter(X(theinds(ii),1),X(theinds(ii),2),50,'k','filled')
     end
 hold off
-% plot the partition and densities in each partition
-lgp_graph(output,y,X)
 
-% Figures for the paper
+% save data for use in other programs (paper graphics made in R due to
+%   Matlab graphics issues)
+[p1, pq1, xt1] = lgpdens(y(prt == 1), 'percentiles', [2.5, 97.5]);
+[p2, pq2, xt2] = lgpdens(y(prt == 2), 'percentiles', [2.5, 97.5]);
+[p3, pq3, xt3] = lgpdens(y(prt == 3), 'percentiles', [2.5, 97.5]);
+p = [p1, p2, p3];
+pq = [pq1, pq2, pq3];
+xt = [xt1, xt2, xt3];
+rdat = [xt, p, pq];
+rdatx = [X, prt];
+csvwrite('Rfigs/data/section4_3_densities.csv', rdat);
+csvwrite('Rfigs/data/section4_3_X.csv', rdatx);
+
+% Figures similar to paper (R version used for paper)
 subplot(2,2,1)
 scatter(X(prt==1,1),X(prt==1,2),50,prt(prt==1),'ko');
 hold on
@@ -88,73 +97,14 @@ end
 fig = gcf;
 fig.PaperUnits = 'inches';
 fig.PaperPosition = [0 0 10 6];
-saveas(fig,'../figs/section4_3.jpg')
-print('../figs/section4_3','-depsc')
+%saveas(fig,'../figs/section4_3.jpg')
+%print('../figs/section4_3','-depsc')
 
-figure()
-lgpdens(y(prt == 2),'bounded',[1 1],'range',[0 1], 'percentiles', [2.5 97.5]);
-hold on
-    xx = linspace(0,1,1000);
-    plot(xx,betapdf(xx,.5,.5))
-hold off
-
-figure()
-lgpdens(y(prt == 3), 'percentiles', [2.5 97.5]);
-hold on
-    xx = linspace(0,1,1000);
-    plot(xx,betapdf(xx,30,20))
-hold off
-
-% MCMC Diagnostics
-% Look at the tempered chains
-SIZES = [];
-swapaccepts = [];
-LPOST = zeros(10^5,8);
-biglpostmax = [];
-biglpostmin = [];
-TOTS = zeros(8,4);
-ACC = TOTS;
-for ii=1:8
-    load(strcat('../output/section4_3_rep1/mcmc_id',num2str(ii),'.mat'));
-    output1tmp = output;
-    load(strcat('../output/section4_3_rep2/mcmc_id',num2str(ii),'.mat'));
-    output2tmp = output;
-    LPOST(:,ii) = [output1tmp.llike + output1tmp.lprior;
-        output2tmp.llike + output2tmp.lprior];
-    TOTS(ii,:) = output1tmp.n_proposed + ...
-        output2tmp.n_proposed;
-    ACC(ii,:) = output1tmp.n_accepted + ...
-        output2tmp.n_accepted;
-    tmpcounts = tabulate([output1tmp.Mpost; output2tmp.Mpost]);
-    SIZES(ii,1:size(tmpcounts,1)) = tmpcounts(:,3);
-    % Find largest log posterior for each partition size
-    for jj=1:size(tmpcounts,1)
-        Mpost = [output1tmp.Mpost; output2tmp.Mpost];
-        ind = Mpost == jj;
-        tmplpostmax = max(LPOST(ind,ii));
-        tmplpostmin = min(LPOST(ind,ii));
-        if isempty(tmplpostmax)
-            tmplpostmax = NaN;
-        end
-        if isempty(tmplpostmin)
-            tmplpostmin = NaN;
-        end
-        biglpostmax(ii,jj) = tmplpostmax;
-        biglpostmin(ii,jj) = tmplpostmin;
-    end
-    swapaccepts(ii) = (20000*output1tmp.swap_accept + ...
-        80000*output2tmp.swap_accept)/100000;
-end
-biglpostmax(biglpostmax == 0) = NaN;
-biglpostmin(biglpostmin == 0) = NaN;
-ACCEPTS = ACC ./ TOTS;
-
-plot(1:10^5,LPOST(:,1),'k')
-title('Log-Posterior Traceplot');
-ylabel('Log Posterior');
+plot(1:(8*1e4), output.llike + output.lprior,'k')
+ylabel('Log posterior');
 xlabel('Iteration');
+ylim([-2670, -2643])
 fig = gcf;
 fig.PaperUnits = 'inches';
 fig.PaperPosition = [0 0 8 3];
-saveas(fig,'../figs/section4_3_trace.jpg')
-print('../figs/sectionr_3_trace','-depsc')
+print('figs/section4_3trace','-depsc')

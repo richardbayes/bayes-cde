@@ -1,4 +1,6 @@
 function [test_set_predictions, chain_stats,ALLPREDS,ALLMEANS,SIG2,CENTERS] = bayes_partition_gauss(data,test,options)
+% Obtained from http://www.stat.tamu.edu/~bmallick/wileybook/book_code.html
+% in 2017.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This is a Bayesian Partition model for Gaussian response data:
 %		see chapters 7 in "Bayesian methods for nonlinear classification and regression".
@@ -8,6 +10,8 @@ function [test_set_predictions, chain_stats,ALLPREDS,ALLMEANS,SIG2,CENTERS] = ba
 %
 %	Writen by Chris Holmes: c.holmes@ic.ac.uk, for academic purposes only.
 %									please contact me if you intend to use this for commercial work
+%   Modified by Richard Payne: paynestatistics@gmail.com (2017-2018).
+%   Modifications marked by initials RDP
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -689,7 +693,3 @@ for count_col = 1:M
    end;
    
 end;
-
-
-
-

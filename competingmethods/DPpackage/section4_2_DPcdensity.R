@@ -30,7 +30,6 @@ xpred <- matrix(c(.75,.5,
 
 begin <- proc.time()
 set.seed(29)
-# With y
 out <- DPcdensity(y=y, x = X,xpred = xpred,prior=prior,state = NULL,
                    mcmc=mcmc,status=TRUE,compute.band=TRUE, type.band = "PD")
 end <- proc.time()
