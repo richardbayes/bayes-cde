@@ -1,4 +1,4 @@
-dat <- read.csv("Rfigs/data/section4_2_BPM.csv", header = FALSE)
+dat <- read.csv("data/section4_2_BPM.csv", header = FALSE)
 colnames(dat) <- c(
   "x",
   paste0("p", 1:4),
